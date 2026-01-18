@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Difficulty, Problem, GameState, DigitState, ActiveColumn } from './types';
+import { Difficulty, Problem, GameState, DigitState, ActiveColumn, FieldType } from './types';
 import { generateProblem } from './utils/mathLogic';
 import Keypad from './components/Keypad';
 import VerticalProblem from './components/VerticalProblem';
@@ -10,9 +10,13 @@ const App: React.FC = () => {
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.EASY);
   const [problem, setProblem] = useState<Problem | null>(null);
   
-  // Answer State (string to allow empty inputs)
+  // Answer State
   const [userAnswer, setUserAnswer] = useState<DigitState>({ units: '', tens: '', hundreds: '', thousands: '' });
+  // Carry State (New)
+  const [userCarry, setUserCarry] = useState<DigitState>({ units: '', tens: '', hundreds: '', thousands: '' });
+  
   const [activeColumn, setActiveColumn] = useState<ActiveColumn>('units');
+  const [activeFieldType, setActiveFieldType] = useState<FieldType>('answer');
   
   const [isWrong, setIsWrong] = useState(false);
   const [score, setScore] = useState(0);
@@ -31,7 +35,9 @@ const App: React.FC = () => {
     const p = generateProblem(level);
     setProblem(p);
     setUserAnswer({ units: '', tens: '', hundreds: '', thousands: '' });
+    setUserCarry({ units: '', tens: '', hundreds: '', thousands: '' });
     setActiveColumn('units');
+    setActiveFieldType('answer');
     setIsWrong(false);
     setGameState(GameState.PLAYING);
   };
@@ -40,34 +46,48 @@ const App: React.FC = () => {
     if (gameState !== GameState.PLAYING) return;
     setIsWrong(false);
 
-    setUserAnswer(prev => {
-      const newState = { ...prev };
-      newState[activeColumn] = val;
-      return newState;
-    });
+    if (activeFieldType === 'carry') {
+      // Handle Carry Input
+      setUserCarry(prev => ({ ...prev, [activeColumn]: val }));
+      // After marking carry, usually user wants to calculate that column's answer, so move focus to answer
+      setActiveFieldType('answer');
+    } else {
+      // Handle Answer Input
+      setUserAnswer(prev => {
+        const newState = { ...prev };
+        newState[activeColumn] = val;
+        return newState;
+      });
 
-    // Auto-advance logic (Right to Left)
-    if (activeColumn === 'units') setActiveColumn('tens');
-    else if (activeColumn === 'tens') setActiveColumn('hundreds');
-    else if (activeColumn === 'hundreds') setActiveColumn('thousands');
+      // Auto-advance logic (Right to Left) for Answer fields
+      if (activeColumn === 'units') setActiveColumn('tens');
+      else if (activeColumn === 'tens') setActiveColumn('hundreds');
+      else if (activeColumn === 'hundreds') setActiveColumn('thousands');
+    }
 
-  }, [activeColumn, gameState]);
+  }, [activeColumn, activeFieldType, gameState]);
 
   const handleDelete = useCallback(() => {
-    setUserAnswer(prev => {
-      const newState = { ...prev };
-      // If current is empty, move right and delete that
-      if (newState[activeColumn] === '') {
-        if (activeColumn === 'thousands') { setActiveColumn('hundreds'); return prev; } // Just move
-        if (activeColumn === 'hundreds') { setActiveColumn('tens'); newState['tens'] = ''; }
-        else if (activeColumn === 'tens') { setActiveColumn('units'); newState['units'] = ''; }
-        return newState;
-      } else {
-        newState[activeColumn] = '';
-        return newState;
-      }
-    });
-  }, [activeColumn]);
+    if (activeFieldType === 'carry') {
+      // Just clear the carry, don't move
+      setUserCarry(prev => ({ ...prev, [activeColumn]: '' }));
+    } else {
+      // Answer deletion logic (with backspace movement)
+      setUserAnswer(prev => {
+        const newState = { ...prev };
+        // If current is empty, move right and delete that
+        if (newState[activeColumn] === '') {
+          if (activeColumn === 'thousands') { setActiveColumn('hundreds'); return prev; } // Just move
+          if (activeColumn === 'hundreds') { setActiveColumn('tens'); newState['tens'] = ''; }
+          else if (activeColumn === 'tens') { setActiveColumn('units'); newState['units'] = ''; }
+          return newState;
+        } else {
+          newState[activeColumn] = '';
+          return newState;
+        }
+      });
+    }
+  }, [activeColumn, activeFieldType]);
 
   const handleSubmit = useCallback(() => {
     if (!problem) return;
@@ -100,6 +120,7 @@ const App: React.FC = () => {
       
       // Reset active column to units so they can try again or edit
       setActiveColumn('units');
+      setActiveFieldType('answer');
     }
   }, [problem, userAnswer, difficulty]);
 
@@ -197,8 +218,11 @@ const App: React.FC = () => {
                       <VerticalProblem 
                           problem={problem}
                           userAnswer={userAnswer}
+                          userCarry={userCarry}
                           activeColumn={activeColumn}
                           setActiveColumn={setActiveColumn}
+                          activeFieldType={activeFieldType}
+                          setActiveFieldType={setActiveFieldType}
                           isWrong={isWrong}
                           isSuccess={gameState === GameState.SUCCESS}
                       />

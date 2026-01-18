@@ -26,3 +26,5 @@ export interface DigitState {
 }
 
 export type ActiveColumn = 'units' | 'tens' | 'hundreds' | 'thousands';
+
+export type FieldType = 'answer' | 'carry';
