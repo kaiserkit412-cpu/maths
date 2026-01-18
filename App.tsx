@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Difficulty, Problem, GameState, DigitState, ActiveColumn } from './types';
 import { generateProblem } from './utils/mathLogic';
 import Keypad from './components/Keypad';
 import VerticalProblem from './components/VerticalProblem';
-import { Trophy, Star, ArrowLeft, RotateCcw, Award } from 'lucide-react';
+import { Trophy, Star, ArrowLeft, Award } from 'lucide-react';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.MENU);
@@ -68,11 +68,6 @@ const App: React.FC = () => {
       }
     });
   }, [activeColumn]);
-
-  const handleClear = () => {
-    setUserAnswer({ units: '', tens: '', hundreds: '', thousands: '' });
-    setActiveColumn('units');
-  };
 
   const handleSubmit = useCallback(() => {
     if (!problem) return;
@@ -218,7 +213,6 @@ const App: React.FC = () => {
                 <Keypad 
                     onPress={handleKeyPress}
                     onDelete={handleDelete}
-                    onClear={handleClear}
                     onSubmit={handleSubmit}
                 />
             </div>

@@ -1,14 +1,13 @@
 import React from 'react';
-import { Delete, Eraser } from 'lucide-react';
+import { Delete } from 'lucide-react';
 
 interface KeypadProps {
   onPress: (val: string) => void;
   onDelete: () => void;
-  onClear: () => void;
   onSubmit: () => void;
 }
 
-const Keypad: React.FC<KeypadProps> = ({ onPress, onDelete, onClear, onSubmit }) => {
+const Keypad: React.FC<KeypadProps> = ({ onPress, onDelete, onSubmit }) => {
   const nums = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
   return (
