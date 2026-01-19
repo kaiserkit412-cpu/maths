@@ -1,8 +1,10 @@
 export enum Difficulty {
-  EASY = 'EASY',     // 2 digits + 1 digit, No Carry
-  MEDIUM = 'MEDIUM', // 2 digits + 2 digits, No Carry
-  HARD = 'HARD',     // 2 digits + 2 digits, With Carry
-  EXPERT = 'EXPERT'  // 3 digits mixed, With Carry
+  BEGINNER = 'BEGINNER', // 1 digit + 1 digit
+  EASY = 'EASY',         // 2 digits + 1 digit, No Carry
+  MEDIUM = 'MEDIUM',     // 2 digits + 2 digits, No Carry
+  HARD = 'HARD',         // 2 digits + 2 digits, With Carry
+  EXPERT = 'EXPERT',     // 3 digits + 3 digits
+  MASTER = 'MASTER'      // 4 digits mixed
 }
 
 export interface Problem {
@@ -33,5 +35,4 @@ export interface LeaderboardEntry {
 
 export type ActiveColumn = 'units' | 'tens' | 'hundreds' | 'thousands';
 
-// Added 'top' and 'bottom' to allow manual transcription
 export type FieldType = 'top' | 'bottom' | 'answer' | 'carry';
