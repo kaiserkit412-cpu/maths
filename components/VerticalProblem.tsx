@@ -14,6 +14,7 @@ interface VerticalProblemProps {
   isWrong: boolean;
   wrongField: FieldType | null;
   isSuccess: boolean;
+  isCopyMode: boolean;
 }
 
 const VerticalProblem: React.FC<VerticalProblemProps> = ({ 
@@ -28,7 +29,8 @@ const VerticalProblem: React.FC<VerticalProblemProps> = ({
   setActiveFieldType,
   isWrong,
   wrongField,
-  isSuccess
+  isSuccess,
+  isCopyMode
 }) => {
   
   // Cell wrapper to handle layout and separators
@@ -59,21 +61,39 @@ const VerticalProblem: React.FC<VerticalProblemProps> = ({
     const isActive = activeColumn === column && activeFieldType === type;
     const isTargetWrong = isWrong && wrongField === type; // Only shake if this specific row is wrong
     
+    // Determine if this specific input is read-only (based on Copy Mode)
+    const isReadOnly = !isCopyMode && (type === 'top' || type === 'bottom');
+
     // Base styles
-    const baseStyle = "w-10 sm:w-16 h-12 sm:h-20 text-center text-3xl sm:text-5xl font-bold outline-none transition-all cursor-pointer rounded-lg select-none flex items-center justify-center";
+    const baseStyle = "w-10 sm:w-16 h-12 sm:h-20 text-center text-3xl sm:text-5xl font-bold outline-none transition-all rounded-lg select-none flex items-center justify-center";
     
     // Type specific styling
     let typeStyle = "";
-    if (type === 'answer') typeStyle = "border-b-4 border-slate-300 bg-slate-50 text-slate-800";
-    else typeStyle = "border-2 border-slate-100 bg-transparent text-slate-600 hover:bg-slate-50"; // Copy fields look cleaner
+    if (type === 'answer') {
+        typeStyle = "border-b-4 border-slate-300 bg-slate-50 text-slate-800 cursor-pointer";
+    } else {
+        if (isReadOnly) {
+             typeStyle = "border-none bg-transparent text-slate-800 cursor-default"; // Plain text look
+        } else {
+             typeStyle = "border-2 border-slate-100 bg-transparent text-slate-600 hover:bg-slate-50 cursor-pointer";
+        }
+    }
 
     // State styling
     if (isActive) {
-        if (type === 'answer') typeStyle = "border-b-4 border-indigo-500 bg-white text-indigo-700 ring-2 ring-indigo-200 shadow-lg transform -translate-y-1";
-        else typeStyle = "border-2 border-blue-400 bg-blue-50 text-blue-600 shadow-md scale-105";
+        if (type === 'answer') {
+            typeStyle = "border-b-4 border-indigo-500 bg-white text-indigo-700 ring-2 ring-indigo-200 shadow-lg transform -translate-y-1 cursor-pointer";
+        } else if (!isReadOnly) {
+            typeStyle = "border-2 border-blue-400 bg-blue-50 text-blue-600 shadow-md scale-105 cursor-pointer";
+        }
     }
 
-    if (isSuccess) typeStyle = "border-none bg-green-100 text-green-700";
+    if (isSuccess) {
+         // Success state overrides
+         if (type === 'answer') typeStyle = "border-none bg-green-100 text-green-700";
+         else typeStyle = "border-none bg-transparent text-slate-600 opacity-60";
+    }
+
     if (isTargetWrong && isActive) typeStyle = "border-red-500 bg-red-50 text-red-700 animate-shake"; // Only shake active wrong field
     if (isTargetWrong && !isActive) typeStyle = "border-red-200 bg-red-50 text-red-400"; // Passive error state
 
@@ -81,7 +101,8 @@ const VerticalProblem: React.FC<VerticalProblemProps> = ({
       <div 
         onClick={(e) => {
           e.stopPropagation();
-          if(!isSuccess) {
+          // Only allow activating if not success AND not readonly
+          if(!isSuccess && !isReadOnly) {
             setActiveColumn(column);
             setActiveFieldType(type);
           }
@@ -123,7 +144,11 @@ const VerticalProblem: React.FC<VerticalProblemProps> = ({
   return (
     <div className="flex flex-col items-center w-full">
       
-      {/* Horizontal Problem Display (Source to Copy) */}
+      {/* Horizontal Problem Display (Source to Copy) - Only show in Copy Mode to reduce clutter if not needed? 
+          Actually user said "turn off copy", implies they don't need to see horizontal if they have vertical pre-filled.
+          But horizontal equation is always good for context. I'll keep it but maybe visual style changes?
+          Let's keep it consistent.
+      */}
       <div className="mb-6 bg-indigo-50 px-6 py-4 rounded-2xl border-2 border-indigo-100 shadow-sm flex items-center gap-3">
         <span className="text-3xl sm:text-4xl font-bold text-slate-700 tracking-wider">
           {problem.topNumber} + {problem.bottomNumber} = 

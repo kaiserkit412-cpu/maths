@@ -3,13 +3,16 @@ import { Difficulty, Problem, GameState, DigitState, ActiveColumn, FieldType, Le
 import { generateProblem } from './utils/mathLogic';
 import Keypad from './components/Keypad';
 import VerticalProblem from './components/VerticalProblem';
-import { Trophy, Star, ArrowLeft, Award, Save, Crown } from 'lucide-react';
+import { Trophy, Star, ArrowLeft, Award, Save, Crown, Pencil, Ban } from 'lucide-react';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.MENU);
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.EASY);
   const [problem, setProblem] = useState<Problem | null>(null);
   
+  // Settings
+  const [isCopyMode, setIsCopyMode] = useState<boolean>(true);
+
   // Input States
   const [userAnswer, setUserAnswer] = useState<DigitState>({ units: '', tens: '', hundreds: '', thousands: '' });
   const [userTop, setUserTop] = useState<DigitState>({ units: '', tens: '', hundreds: '', thousands: '' });
@@ -68,16 +71,28 @@ const App: React.FC = () => {
     }
   };
 
+  // Helper to convert number to digit state
+  const numberToDigits = (num: number): DigitState => {
+    return {
+      units: (num % 10).toString(),
+      tens: num >= 10 ? Math.floor((num / 10) % 10).toString() : '',
+      hundreds: num >= 100 ? Math.floor((num / 100) % 10).toString() : '',
+      thousands: num >= 1000 ? Math.floor((num / 1000) % 10).toString() : ''
+    };
+  };
+
   // Initialize Game
   const startGame = (level: Difficulty) => {
     setDifficulty(level);
-    nextProblem(level);
     setScore(0);
     setStreak(0);
+    // Logic for first problem is inside nextProblem, but we need to call it after state updates? 
+    // Actually we can call it directly, but we need to pass the level
+    nextProblem(level, true); // true = reset score/streak implicitly by being new game context, but here just generate
     setGameState(GameState.PLAYING);
   };
 
-  const nextProblem = (level: Difficulty) => {
+  const nextProblem = (level: Difficulty, isNewGame: boolean = false) => {
     const p = generateProblem(level);
     setProblem(p);
     
@@ -85,15 +100,28 @@ const App: React.FC = () => {
     const empty = { units: '', tens: '', hundreds: '', thousands: '' };
     setUserAnswer(empty);
     setUserCarry(empty);
-    setUserTop(empty);
-    setUserBottom(empty);
     
-    // Reset cursor to Top Number, Tens place (good starting point for writing)
-    setActiveFieldType('top');
-    setActiveColumn(p.topNumber >= 100 ? 'hundreds' : 'tens');
+    if (isCopyMode) {
+        setUserTop(empty);
+        setUserBottom(empty);
+        // Reset cursor to Top Number, Tens place (good starting point for writing)
+        setActiveFieldType('top');
+        setActiveColumn(p.topNumber >= 100 ? 'hundreds' : 'tens');
+    } else {
+        // Pre-fill numbers
+        setUserTop(numberToDigits(p.topNumber));
+        setUserBottom(numberToDigits(p.bottomNumber));
+        // Start at Answer, Units
+        setActiveFieldType('answer');
+        setActiveColumn('units');
+    }
     
     setIsWrong(false);
     setWrongField(null);
+    if (isNewGame) {
+        setScore(0);
+        setStreak(0);
+    }
     setGameState(GameState.PLAYING);
   };
 
@@ -112,41 +140,39 @@ const App: React.FC = () => {
       setActiveFieldType('answer');
     } 
     else if (activeFieldType === 'top') {
+      if (!isCopyMode) return; // Prevent editing if not in copy mode
       updateState(setUserTop);
-      // Copying logic: Left to Right (Thousands -> Hundreds -> Tens -> Units)
-      // Because we write numbers 2 then 3 for 23.
+      // Copying logic
       if (activeColumn === 'thousands') setActiveColumn('hundreds');
       else if (activeColumn === 'hundreds') setActiveColumn('tens');
       else if (activeColumn === 'tens') setActiveColumn('units');
       else if (activeColumn === 'units') {
-         // Auto-jump to next row
          setActiveFieldType('bottom');
-         // Estimate start column for bottom row
          if (problem && problem.bottomNumber >= 100) setActiveColumn('hundreds');
          else setActiveColumn('tens'); 
       }
     }
     else if (activeFieldType === 'bottom') {
+      if (!isCopyMode) return; // Prevent editing
       updateState(setUserBottom);
-      // Copying logic: Left to Right
+      // Copying logic
       if (activeColumn === 'thousands') setActiveColumn('hundreds');
       else if (activeColumn === 'hundreds') setActiveColumn('tens');
       else if (activeColumn === 'tens') setActiveColumn('units');
       else if (activeColumn === 'units') {
-         // Auto-jump to answer calculation
          setActiveFieldType('answer');
-         setActiveColumn('units'); // Calculation starts at units
+         setActiveColumn('units'); 
       }
     }
     else {
-      // Answer logic: Right to Left (Math calculation direction)
+      // Answer logic: Right to Left
       updateState(setUserAnswer);
       if (activeColumn === 'units') setActiveColumn('tens');
       else if (activeColumn === 'tens') setActiveColumn('hundreds');
       else if (activeColumn === 'hundreds') setActiveColumn('thousands');
     }
 
-  }, [activeColumn, activeFieldType, gameState, problem]);
+  }, [activeColumn, activeFieldType, gameState, problem, isCopyMode]);
 
   const handleDelete = useCallback(() => {
     const clearState = (setter: React.Dispatch<React.SetStateAction<DigitState>>) => {
@@ -156,8 +182,7 @@ const App: React.FC = () => {
     if (activeFieldType === 'carry') {
        clearState(setUserCarry);
     } else if (activeFieldType === 'top') {
-       // Backspace Logic for Copying (Right to Left)
-       // Check if current is empty, if so move left and clear
+       if (!isCopyMode) return;
        if (userTop[activeColumn] === '') {
           if (activeColumn === 'units') { setActiveColumn('tens'); }
           else if (activeColumn === 'tens') { setActiveColumn('hundreds'); }
@@ -166,6 +191,7 @@ const App: React.FC = () => {
           clearState(setUserTop);
        }
     } else if (activeFieldType === 'bottom') {
+        if (!isCopyMode) return;
         if (userBottom[activeColumn] === '') {
             if (activeColumn === 'units') { setActiveColumn('tens'); }
             else if (activeColumn === 'tens') { setActiveColumn('hundreds'); }
@@ -174,7 +200,6 @@ const App: React.FC = () => {
             clearState(setUserBottom);
          }
     } else {
-      // Answer logic (Left to Right backspace)
       if (userAnswer[activeColumn] === '') {
           if (activeColumn === 'thousands') { setActiveColumn('hundreds'); }
           else if (activeColumn === 'hundreds') { setActiveColumn('tens'); }
@@ -183,7 +208,7 @@ const App: React.FC = () => {
           clearState(setUserAnswer);
        }
     }
-  }, [activeColumn, activeFieldType, userAnswer, userTop, userBottom]);
+  }, [activeColumn, activeFieldType, userAnswer, userTop, userBottom, isCopyMode]);
 
   const parseInput = (state: DigitState) => {
     const s = `${state.thousands}${state.hundreds}${state.tens}${state.units}`;
@@ -197,36 +222,30 @@ const App: React.FC = () => {
     const inputBottom = parseInput(userBottom);
     const inputAnswer = parseInput(userAnswer);
 
-    // 1. Validate Top Number Copying
-    if (inputTop !== problem.topNumber) {
-        setIsWrong(true);
-        setWrongField('top');
-        // Vibrate
-        if (navigator.vibrate) navigator.vibrate(200);
-        return;
+    if (isCopyMode) {
+        if (inputTop !== problem.topNumber) {
+            setIsWrong(true);
+            setWrongField('top');
+            if (navigator.vibrate) navigator.vibrate(200);
+            return;
+        }
+        if (inputBottom !== problem.bottomNumber) {
+            setIsWrong(true);
+            setWrongField('bottom');
+            if (navigator.vibrate) navigator.vibrate(200);
+            return;
+        }
     }
 
-    // 2. Validate Bottom Number Copying
-    if (inputBottom !== problem.bottomNumber) {
-        setIsWrong(true);
-        setWrongField('bottom');
-        if (navigator.vibrate) navigator.vibrate(200);
-        return;
-    }
-
-    // 3. Validate Answer
     if (inputAnswer === problem.answer) {
-      // Correct!
       setGameState(GameState.SUCCESS);
       setScore(s => s + 10);
       setStreak(s => s + 1);
       
-      // Auto next problem after delay
       setTimeout(() => {
         nextProblem(difficulty);
       }, 1500);
     } else {
-      // Wrong Answer
       setIsWrong(true);
       setWrongField('answer');
       setStreak(0);
@@ -235,7 +254,7 @@ const App: React.FC = () => {
       setActiveColumn('units');
       setActiveFieldType('answer');
     }
-  }, [problem, userAnswer, userTop, userBottom, difficulty]);
+  }, [problem, userAnswer, userTop, userBottom, difficulty, isCopyMode]);
 
 
   // Menu Screen
@@ -243,11 +262,6 @@ const App: React.FC = () => {
     return (
       <div className="h-screen bg-gradient-to-b from-blue-100 to-green-50 flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
         
-        {/* Leaderboard Overlay on Menu */}
-        <div className="absolute top-4 right-4 z-20">
-             {/* Optional Settings Icon */}
-        </div>
-
         <div className="bg-white/80 backdrop-blur-md p-6 lg:p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center border-4 border-white ring-4 ring-blue-100 relative z-10 flex flex-col gap-6 max-h-full overflow-y-auto scrollbar-hide">
           <div>
             <div className="bg-blue-500 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -255,6 +269,17 @@ const App: React.FC = () => {
             </div>
             <h1 className="text-3xl font-extrabold text-slate-800 mb-1 tracking-tight">數學直式練習</h1>
             <p className="text-slate-500 font-medium text-sm">請將橫式題目寫成直式!</p>
+          </div>
+
+          {/* Copy Mode Toggle */}
+          <div className="bg-indigo-50 p-1 rounded-xl flex items-center relative cursor-pointer" onClick={() => setIsCopyMode(!isCopyMode)}>
+            <div className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-300 z-10 ${isCopyMode ? 'text-indigo-600' : 'text-slate-400'}`}>
+               <span className="flex items-center justify-center gap-1"><Pencil size={16}/> 抄題模式</span>
+            </div>
+            <div className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all duration-300 z-10 ${!isCopyMode ? 'text-indigo-600' : 'text-slate-400'}`}>
+               <span className="flex items-center justify-center gap-1"><Ban size={16}/> 快速模式</span>
+            </div>
+            <div className={`absolute w-[calc(50%-4px)] h-[calc(100%-8px)] bg-white shadow-sm rounded-lg transition-all duration-300 top-1 left-1 ${isCopyMode ? 'translate-x-0' : 'translate-x-full'}`} />
           </div>
           
           <div className="space-y-3 shrink-0">
@@ -278,7 +303,6 @@ const App: React.FC = () => {
             />
           </div>
 
-          {/* Dragon Tiger List (Leaderboard) */}
           {leaderboard.length > 0 && (
             <div className="mt-4 pt-4 border-t-2 border-slate-100 shrink-0">
                 <div className="flex items-center justify-center gap-2 mb-3 text-amber-500">
@@ -311,18 +335,11 @@ const App: React.FC = () => {
   // Game Screen
   return (
     <div className="h-screen bg-slate-50 relative overflow-hidden select-none flex flex-col">
-      
-      {/* Background decoration */}
       <div className="absolute top-[-10%] right-[-10%] w-64 h-64 lg:w-[500px] lg:h-[500px] bg-yellow-200 rounded-full opacity-50 blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 lg:w-[500px] lg:h-[500px] bg-blue-200 rounded-full opacity-50 blur-3xl pointer-events-none" />
 
-      {/* Main Layout Container - Changed lg:flex-row to md:flex-row for iPad support */}
       <div className="w-full h-full flex flex-col md:flex-row max-w-7xl mx-auto">
-        
-        {/* Left Section: Header + Problem */}
         <div className="flex-1 flex flex-col p-2 sm:p-4 md:p-6 lg:p-8 relative z-10 overflow-y-auto scrollbar-hide">
-            
-            {/* Header Controls */}
             <div className="flex items-center justify-between mb-4 flex-none">
                 <button 
                   onClick={handleQuitGame}
@@ -345,14 +362,15 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* Problem Area */}
             <div className="flex-1 flex flex-col items-center justify-start sm:justify-center space-y-2 lg:space-y-8 min-h-[300px]">
                 <div className="text-center h-8 lg:h-12 flex items-center justify-center flex-none">
                     {gameState === GameState.SUCCESS ? (
                         <h2 className="text-xl lg:text-4xl font-bold text-green-500 animate-bounce-short">太棒了! Correct!</h2>
                     ) : (
                         <h2 className="text-base lg:text-2xl font-semibold text-slate-400">
-                            {wrongField === 'top' || wrongField === 'bottom' ? '題目抄寫錯誤 Check numbers!' : '請抄寫並計算 Copy & Solve'}
+                            {isCopyMode && (wrongField === 'top' || wrongField === 'bottom') 
+                                ? '題目抄寫錯誤 Check numbers!' 
+                                : (isCopyMode ? '請抄寫並計算 Copy & Solve' : '請計算答案 Solve the problem')}
                         </h2>
                     )}
                 </div>
@@ -372,13 +390,13 @@ const App: React.FC = () => {
                           isWrong={isWrong}
                           wrongField={wrongField}
                           isSuccess={gameState === GameState.SUCCESS}
+                          isCopyMode={isCopyMode}
                       />
                   </div>
                 )}
             </div>
         </div>
 
-        {/* Right Section: Keypad (Right side on MD/iPad and up) */}
         <div className="flex-none w-full md:w-[340px] lg:w-[420px] lg:h-full flex flex-col justify-end md:justify-center p-2 sm:p-4 lg:p-8 z-20 bg-white/60 md:bg-white/40 backdrop-blur-md md:border-l md:border-white/50 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] md:shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
             <div className="w-full max-w-md mx-auto">
                 <Keypad 
@@ -390,7 +408,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Save Score Modal */}
       {showSaveModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className="bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl animate-bounce-short">
