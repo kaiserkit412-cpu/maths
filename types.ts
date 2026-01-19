@@ -25,6 +25,13 @@ export interface DigitState {
   thousands: string;
 }
 
+export interface LeaderboardEntry {
+  name: string;
+  score: number;
+  date: string;
+}
+
 export type ActiveColumn = 'units' | 'tens' | 'hundreds' | 'thousands';
 
-export type FieldType = 'answer' | 'carry';
+// Added 'top' and 'bottom' to allow manual transcription
+export type FieldType = 'top' | 'bottom' | 'answer' | 'carry';

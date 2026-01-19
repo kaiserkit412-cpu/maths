@@ -4,41 +4,33 @@ import { Problem, ActiveColumn, DigitState, FieldType } from '../types';
 interface VerticalProblemProps {
   problem: Problem;
   userAnswer: DigitState;
+  userTop: DigitState;
+  userBottom: DigitState;
   userCarry: DigitState;
   activeColumn: ActiveColumn;
   setActiveColumn: (col: ActiveColumn) => void;
   activeFieldType: FieldType;
   setActiveFieldType: (type: FieldType) => void;
   isWrong: boolean;
+  wrongField: FieldType | null;
   isSuccess: boolean;
 }
 
 const VerticalProblem: React.FC<VerticalProblemProps> = ({ 
   problem, 
   userAnswer, 
+  userTop,
+  userBottom,
   userCarry,
   activeColumn, 
   setActiveColumn,
   activeFieldType,
   setActiveFieldType,
   isWrong,
+  wrongField,
   isSuccess
 }) => {
   
-  // Split numbers into digits for alignment
-  const getDigits = (num: number) => {
-    const s = num.toString().padStart(4, ' '); // Supports up to 9999
-    return {
-      thousands: s[0],
-      hundreds: s[1],
-      tens: s[2],
-      units: s[3]
-    };
-  };
-
-  const topD = getDigits(problem.topNumber);
-  const botD = getDigits(problem.bottomNumber);
-
   // Cell wrapper to handle layout and separators
   const Cell: React.FC<{ 
     children?: React.ReactNode; 
@@ -55,13 +47,6 @@ const VerticalProblem: React.FC<VerticalProblemProps> = ({
     </div>
   );
 
-  // Helper to render a single digit
-  const renderDigit = (digit: string) => (
-    <div className="flex items-end justify-center w-full h-full pb-2 text-4xl sm:text-6xl font-bold text-slate-700">
-      {digit !== ' ' ? digit : ''}
-    </div>
-  );
-
   // Helper to render the operator
   const renderOperator = (symbol: string | null) => (
     <div className="flex items-end justify-center w-full h-full pb-3 text-4xl sm:text-5xl font-bold text-indigo-500">
@@ -69,15 +54,28 @@ const VerticalProblem: React.FC<VerticalProblemProps> = ({
     </div>
   );
 
-  // Helper to render an input box for ANSWER
-  const renderInput = (column: ActiveColumn, value: string) => {
-    const isActive = activeColumn === column && activeFieldType === 'answer';
-    const baseStyle = "w-10 sm:w-16 h-12 sm:h-20 border-b-4 text-center text-3xl sm:text-5xl font-bold outline-none transition-all cursor-pointer rounded-lg select-none flex items-center justify-center";
+  // Helper to render an input box (used for Answer, Top, Bottom)
+  const renderInput = (column: ActiveColumn, value: string, type: FieldType) => {
+    const isActive = activeColumn === column && activeFieldType === type;
+    const isTargetWrong = isWrong && wrongField === type; // Only shake if this specific row is wrong
     
-    let stateStyle = "border-slate-300 bg-slate-50 text-slate-800";
-    if (isActive) stateStyle = "border-indigo-500 bg-white text-indigo-700 ring-2 ring-indigo-200 shadow-lg transform -translate-y-1";
-    if (isSuccess) stateStyle = "border-green-500 bg-green-100 text-green-700 border-none ring-0";
-    if (isWrong && isActive) stateStyle = "border-red-500 bg-red-50 text-red-700 animate-shake";
+    // Base styles
+    const baseStyle = "w-10 sm:w-16 h-12 sm:h-20 text-center text-3xl sm:text-5xl font-bold outline-none transition-all cursor-pointer rounded-lg select-none flex items-center justify-center";
+    
+    // Type specific styling
+    let typeStyle = "";
+    if (type === 'answer') typeStyle = "border-b-4 border-slate-300 bg-slate-50 text-slate-800";
+    else typeStyle = "border-2 border-slate-100 bg-transparent text-slate-600 hover:bg-slate-50"; // Copy fields look cleaner
+
+    // State styling
+    if (isActive) {
+        if (type === 'answer') typeStyle = "border-b-4 border-indigo-500 bg-white text-indigo-700 ring-2 ring-indigo-200 shadow-lg transform -translate-y-1";
+        else typeStyle = "border-2 border-blue-400 bg-blue-50 text-blue-600 shadow-md scale-105";
+    }
+
+    if (isSuccess) typeStyle = "border-none bg-green-100 text-green-700";
+    if (isTargetWrong && isActive) typeStyle = "border-red-500 bg-red-50 text-red-700 animate-shake"; // Only shake active wrong field
+    if (isTargetWrong && !isActive) typeStyle = "border-red-200 bg-red-50 text-red-400"; // Passive error state
 
     return (
       <div 
@@ -85,10 +83,10 @@ const VerticalProblem: React.FC<VerticalProblemProps> = ({
           e.stopPropagation();
           if(!isSuccess) {
             setActiveColumn(column);
-            setActiveFieldType('answer');
+            setActiveFieldType(type);
           }
         }}
-        className={`${baseStyle} ${stateStyle}`}
+        className={`${baseStyle} ${typeStyle}`}
       >
         {value}
       </div>
@@ -97,13 +95,10 @@ const VerticalProblem: React.FC<VerticalProblemProps> = ({
 
   // Helper to render an input circle for CARRY
   const renderCarry = (column: ActiveColumn, value: string) => {
-    // Only allow carry inputs if not success mode
     const isActive = activeColumn === column && activeFieldType === 'carry';
     
-    // Base style for the small circle
     const baseStyle = "w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 text-center text-lg sm:text-2xl font-bold flex items-center justify-center cursor-pointer transition-all select-none mb-1";
     
-    // Determine appearance
     let stateStyle = "border-slate-200 border-dashed text-slate-400 bg-transparent hover:bg-slate-50";
     if (value) stateStyle = "border-slate-400 border-solid text-slate-600 bg-white";
     if (isActive) stateStyle = "border-orange-400 border-solid bg-orange-50 text-orange-600 ring-2 ring-orange-200 scale-110 shadow-md";
@@ -128,75 +123,66 @@ const VerticalProblem: React.FC<VerticalProblemProps> = ({
   return (
     <div className="flex flex-col items-center w-full">
       
-      {/* Horizontal Problem Display */}
-      <div className="mb-6 bg-indigo-50 px-6 py-3 rounded-2xl border-2 border-indigo-100 shadow-sm">
-        <span className="text-2xl sm:text-3xl font-bold text-slate-600 tracking-wider">
-          {problem.topNumber} + {problem.bottomNumber} = ?
+      {/* Horizontal Problem Display (Source to Copy) */}
+      <div className="mb-6 bg-indigo-50 px-6 py-4 rounded-2xl border-2 border-indigo-100 shadow-sm flex items-center gap-3">
+        <span className="text-3xl sm:text-4xl font-bold text-slate-700 tracking-wider">
+          {problem.topNumber} + {problem.bottomNumber} = 
         </span>
+        <div className="w-12 h-12 bg-white rounded-lg border-2 border-indigo-200 flex items-center justify-center text-indigo-300 font-bold text-xl">
+            ?
+        </div>
       </div>
 
       {/* Vertical Grid Container */}
       <div className="p-4 sm:p-8 bg-white rounded-[2rem] shadow-xl border border-slate-200">
         <div className="flex flex-col items-center">
           
-          {/* Row 0: Carry Inputs (New) */}
+          {/* Row 0: Carry Inputs */}
           <div className="flex justify-center mb-1">
-             <Cell className="h-10 sm:h-12" /> {/* Spacer */}
+             <Cell className="h-10 sm:h-12" />
              <Cell className="h-10 sm:h-12" hasSeparator>{renderCarry('thousands', userCarry.thousands)}</Cell>
              <Cell className="h-10 sm:h-12" hasSeparator>{renderCarry('hundreds', userCarry.hundreds)}</Cell>
              <Cell className="h-10 sm:h-12" hasSeparator>{renderCarry('tens', userCarry.tens)}</Cell>
              <Cell className="h-10 sm:h-12" >{/* No carry for units */}</Cell>
           </div>
 
-          {/* Row 1: Top Number */}
+          {/* Row 1: Top Number (Input) */}
           <div className="flex justify-center border-b border-slate-100 border-dashed">
             <Cell className="h-16 sm:h-24">{renderOperator(null)}</Cell>
-            <Cell className="h-16 sm:h-24" hasSeparator>{renderDigit(topD.thousands)}</Cell>
-            <Cell className="h-16 sm:h-24" hasSeparator>{renderDigit(topD.hundreds)}</Cell>
-            <Cell className="h-16 sm:h-24" hasSeparator>{renderDigit(topD.tens)}</Cell>
-            <Cell className="h-16 sm:h-24">{renderDigit(topD.units)}</Cell>
+            <Cell className="h-16 sm:h-24" hasSeparator>{renderInput('thousands', userTop.thousands, 'top')}</Cell>
+            <Cell className="h-16 sm:h-24" hasSeparator>{renderInput('hundreds', userTop.hundreds, 'top')}</Cell>
+            <Cell className="h-16 sm:h-24" hasSeparator>{renderInput('tens', userTop.tens, 'top')}</Cell>
+            <Cell className="h-16 sm:h-24">{renderInput('units', userTop.units, 'top')}</Cell>
           </div>
 
-          {/* Row 2: Bottom Number */}
+          {/* Row 2: Bottom Number (Input) */}
           <div className="flex justify-center border-b-4 border-slate-700">
             <Cell className="h-16 sm:h-24">{renderOperator('+')}</Cell>
-            <Cell className="h-16 sm:h-24" hasSeparator>{renderDigit(botD.thousands)}</Cell>
-            <Cell className="h-16 sm:h-24" hasSeparator>{renderDigit(botD.hundreds)}</Cell>
-            <Cell className="h-16 sm:h-24" hasSeparator>{renderDigit(botD.tens)}</Cell>
-            <Cell className="h-16 sm:h-24">{renderDigit(botD.units)}</Cell>
+            <Cell className="h-16 sm:h-24" hasSeparator>{renderInput('thousands', userBottom.thousands, 'bottom')}</Cell>
+            <Cell className="h-16 sm:h-24" hasSeparator>{renderInput('hundreds', userBottom.hundreds, 'bottom')}</Cell>
+            <Cell className="h-16 sm:h-24" hasSeparator>{renderInput('tens', userBottom.tens, 'bottom')}</Cell>
+            <Cell className="h-16 sm:h-24">{renderInput('units', userBottom.units, 'bottom')}</Cell>
           </div>
 
           {/* Row 3: Answer Inputs */}
           <div className="flex justify-center mt-2">
-             {/* Spacer for operator column */}
              <Cell className="h-16 sm:h-24" />
-
-             {/* Thousands Input */}
              <Cell className="h-16 sm:h-24" hasSeparator>
-                <div className={parseInt(userAnswer.thousands) > 0 || activeColumn === 'thousands' || problem.answer > 999 ? 'opacity-100' : 'opacity-10 pointer-events-none'}>
-                  {renderInput('thousands', userAnswer.thousands)}
-                </div>
+                {/* Always show answer inputs, let user navigate freely */}
+                {renderInput('thousands', userAnswer.thousands, 'answer')}
              </Cell>
-
-             {/* Hundreds Input */}
              <Cell className="h-16 sm:h-24" hasSeparator>
-                <div className={parseInt(userAnswer.hundreds) > 0 || activeColumn === 'hundreds' || activeColumn === 'thousands' || problem.answer > 99 ? 'opacity-100' : 'opacity-10 pointer-events-none'}>
-                  {renderInput('hundreds', userAnswer.hundreds)}
-                </div>
+                {renderInput('hundreds', userAnswer.hundreds, 'answer')}
              </Cell>
-
-             {/* Tens Input */}
              <Cell className="h-16 sm:h-24" hasSeparator>
-                {renderInput('tens', userAnswer.tens)}
+                {renderInput('tens', userAnswer.tens, 'answer')}
              </Cell>
-
-             {/* Units Input */}
              <Cell className="h-16 sm:h-24">
-                {renderInput('units', userAnswer.units)}
+                {renderInput('units', userAnswer.units, 'answer')}
              </Cell>
           </div>
 
-          {/* Column Labels (Optional Helper) */}
+          {/* Column Labels */}
           <div className="flex justify-center mt-1 opacity-30 text-xs font-bold text-slate-400">
              <Cell />
              <Cell hasSeparator>千</Cell>
