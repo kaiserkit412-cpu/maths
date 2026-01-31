@@ -35,7 +35,6 @@ const App: React.FC = () => {
   const [isWrong, setIsWrong] = useState(false);
   const [wrongField, setWrongField] = useState<FieldType | null>(null);
   const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
   const [showPlusTen, setShowPlusTen] = useState(false);
 
   const triggerConfetti = () => {
@@ -72,7 +71,7 @@ const App: React.FC = () => {
         setActiveFieldType(p.numbers.length === 3 ? 'intermediate' : 'answer');
         setActiveColumn('units');
     }
-    if (isNewGame) { setScore(0); setStreak(0); }
+    if (isNewGame) { setScore(0); }
     setGameState(GameState.PLAYING);
   };
 
@@ -157,14 +156,14 @@ const App: React.FC = () => {
         setUserHorizontalAnswer(prev => prev.slice(0, -1));
         return;
     }
-    const setterMap: Record<string, Function> = { 
+    const setterMap: Record<string, React.Dispatch<React.SetStateAction<DigitState>>> = { 
       carry: setUserCarry, 
       carry2: setUserCarry2, 
       intermediate: setUserIntermediate, 
       answer: setUserAnswer 
     };
     if (setterMap[activeFieldType]) {
-        setterMap[activeFieldType](prev => ({ ...prev, [activeColumn]: '' }));
+        setterMap[activeFieldType]((prev: DigitState) => ({ ...prev, [activeColumn]: '' }));
     } else if (activeFieldType.startsWith('row')) {
         const idx = parseInt(activeFieldType.replace('row', ''));
         setUserRows(prev => { 
@@ -222,7 +221,7 @@ const App: React.FC = () => {
         if (parseInt(userHorizontalAnswer) === problem.answer) {
             setGameState(GameState.SUCCESS);
             setCurrentPraise(PRAISES[Math.floor(Math.random() * PRAISES.length)]);
-            setShowPlusTen(true); setScore(s => s + 10); setStreak(s => s + 1);
+            setShowPlusTen(true); setScore(s => s + 10);
             triggerConfetti();
             setTimeout(() => nextProblem(difficulty), 2000);
         } else {
