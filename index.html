@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>數學加數直式練習</title>
+    <title>數學加減法直式大師</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
@@ -11,8 +11,9 @@
         font-family: 'Fredoka', sans-serif;
         background-color: #f0fdf4; /* Green-50 */
         touch-action: manipulation;
+        overflow: hidden;
       }
-      /* Custom bounce animation for correct answers */
+      /* Custom bounce animation */
       @keyframes bounce-short {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-25%); }
@@ -20,7 +21,7 @@
       .animate-bounce-short {
         animation: bounce-short 0.5s ease-in-out 2;
       }
-      /* Shake animation for wrong answers */
+      /* Shake animation for errors */
       @keyframes shake {
         0%, 100% { transform: translateX(0); }
         25% { transform: translateX(-5px); }
@@ -28,6 +29,28 @@
       }
       .animate-shake {
         animation: shake 0.3s ease-in-out;
+      }
+      /* Floating score animation */
+      @keyframes float-up {
+        0% { transform: translateY(0); opacity: 1; }
+        100% { transform: translateY(-100px); opacity: 0; }
+      }
+      .animate-float-up {
+        animation: float-up 1s forwards ease-out;
+      }
+      /* Confetti particles */
+      @keyframes confetti-fall {
+        0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+      }
+      .confetti {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        top: -10px;
+        z-index: 100;
+        pointer-events: none;
+        animation: confetti-fall 3s linear forwards;
       }
     </style>
   <script type="importmap">
