@@ -1,5 +1,5 @@
 import React from 'react';
-import { Problem, ActiveColumn, DigitState, FieldType, Operation } from '../types';
+import { Problem, ActiveColumn, DigitState, FieldType } from '../types';
 
 interface VerticalProblemProps {
   problem: Problem;

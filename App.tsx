@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Difficulty, Operation, Problem, GameState, DigitState, ActiveColumn, FieldType, LeaderboardEntry } from './types';
+import React, { useState, useCallback } from 'react';
+import { Difficulty, Operation, Problem, GameState, DigitState, ActiveColumn, FieldType } from './types';
 import { generateProblem } from './utils/mathLogic';
 import Keypad from './components/Keypad';
 import VerticalProblem from './components/VerticalProblem';
-import { Trophy, Star, ArrowLeft, Award, Save, Crown, Pencil, Ban, Plus, Minus, Sparkles } from 'lucide-react';
+import { Trophy, Star, ArrowLeft, Sparkles } from 'lucide-react';
 
 const PRAISES = ["太棒了！🌟", "真厲害！👏", "你是數學小天才！🧠", "做得好！👍", "好聰明喔！✨", "滿分！💯", "厲害到不行！🚀", "你真棒！🌈"];
 const CONFETTI_COLORS = ['#fbbf24', '#34d399', '#60a5fa', '#f87171', '#a78bfa', '#f472b6'];
@@ -37,15 +37,6 @@ const App: React.FC = () => {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [showPlusTen, setShowPlusTen] = useState(false);
-
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [playerName, setPlayerName] = useState('');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('math-app-leaderboard');
-    if (saved) setLeaderboard(JSON.parse(saved));
-  }, []);
 
   const triggerConfetti = () => {
     const newConfetti = Array.from({ length: 50 }).map((_, i) => ({
